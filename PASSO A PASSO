@@ -1,0 +1,326 @@
+📦 1. PRÉ-REQUISITOS
+🔹 Instalar o Node.js
+Site: https://nodejs.org
+
+Após instalar, verifique no terminal:
+
+bash
+
+node -v
+npm -v
+
+🔹 Instalar o Angular CLI
+bash
+
+npm install -g @angular/cli
+
+❗ Caso apareça o erro:
+
+O arquivo C:\Program Files\nodejs\npm.ps1 não pode ser carregado...
+➡ Solução:
+Abra o PowerShell como administrador e digite:
+
+powershell
+
+Set-ExecutionPolicy RemoteSigned
+Depois, digite S (sim) e pressione Enter.
+
+🔹 Instalar o Visual Studio Code
+Site: https://code.visualstudio.com
+
+No VS Code, instale a extensão Angular Language Service para facilitar a programação.
+
+-----------------------------------------------------------------------------------
+
+🚀 2. CRIAÇÃO DO PROJETO
+Abrir terminal no VS Code e rodar:
+bash
+
+ng new sistema-alunos --standalone --routing --style=css
+
+Entrar na pasta:
+bash
+
+cd sistema-alunos
+
+Abrir o projeto no VS Code:
+bash
+
+code .
+
+Instalar o Angular Material:
+bash
+
+ng add @angular/material
+Tema: Indigo/Pink + Typography e Animations: Yes
+
+-----------------------------------------------------------------------------------
+
+📄 3. CRIAR OS ARQUIVOS MANUAIS
+🔹 Criar src/app/aluno.model.ts (manualmente no VS Code)
+ts
+
+export interface Aluno {
+  id: number;
+  nome: string;
+  nota: number;
+}
+
+🔹 Criar src/app/aluno.service.ts
+ts
+
+import { Injectable } from '@angular/core';
+import { Aluno } from './aluno.model';
+import { Observable, of } from 'rxjs';
+
+@Injectable({ providedIn: 'root' })
+export class AlunoService {
+  private alunos: Aluno[] = [
+    { id: 1, nome: 'João', nota: 8 },
+    { id: 2, nome: 'Maria', nota: 7 }
+  ];
+
+  listar(): Observable<Aluno[]> {
+    return of(this.alunos);
+  }
+
+  adicionar(aluno: Omit<Aluno, 'id'>): void {
+    const novo = { ...aluno, id: this.alunos.length + 1 };
+    this.alunos.push(novo);
+  }
+}
+
+-----------------------------------------------------------------------------------
+
+🧱 4. COMPONENTES
+🔹 Gerar aluno-list
+bash
+
+ng generate component aluno-list --standalone
+
+
+aluno-list.component.ts
+ts
+
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MatTableModule } from '@angular/material/table';
+import { AlunoService } from '../aluno.service';
+import { Aluno } from '../aluno.model';
+
+@Component({
+  selector: 'app-aluno-list',
+  standalone: true,
+  imports: [CommonModule, MatTableModule],
+  templateUrl: './aluno-list.component.html',
+})
+export class AlunoListComponent {
+  private service = inject(AlunoService);
+  alunos: Aluno[] = [];
+  displayedColumns = ['id', 'nome', 'nota'];
+
+  constructor() {
+    this.service.listar().subscribe(alunos => this.alunos = alunos);
+  }
+}
+
+
+aluno-list.component.html
+html
+
+<table mat-table [dataSource]="alunos" class="mat-elevation-z8">
+  <ng-container matColumnDef="id">
+    <th mat-header-cell *matHeaderCellDef>ID</th>
+    <td mat-cell *matCellDef="let aluno">{{ aluno.id }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="nome">
+    <th mat-header-cell *matHeaderCellDef>Nome</th>
+    <td mat-cell *matCellDef="let aluno">{{ aluno.nome }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="nota">
+    <th mat-header-cell *matHeaderCellDef>Nota</th>
+    <td mat-cell *matCellDef="let aluno">{{ aluno.nota }}</td>
+  </ng-container>
+
+  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+  <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+</table>
+
+
+🔹 Gerar aluno-form
+bash
+
+ng generate component aluno-form --standalone
+
+aluno-form.component.ts (corrigido com cast do tipo)
+ts
+
+import { Component, inject } from '@angular/core';
+import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AlunoService } from '../aluno.service';
+import { Aluno } from '../aluno.model';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+
+@Component({
+  selector: 'app-aluno-form',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule
+  ],
+  templateUrl: './aluno-form.component.html'
+})
+export class AlunoFormComponent {
+  fb = inject(FormBuilder);
+  service = inject(AlunoService);
+  router = inject(Router);
+
+  form = this.fb.group({
+    nome: ['', Validators.required],
+    nota: [0, [Validators.required, Validators.min(0), Validators.max(10)]]
+  });
+
+  salvar() {
+    if (this.form.valid) {
+      this.service.adicionar(this.form.getRawValue() as Omit<Aluno, 'id'>);
+      alert('Aluno salvo!');
+      this.router.navigate(['/']);
+    }
+  }
+}
+
+
+aluno-form.component.html
+html
+
+<form [formGroup]="form" (ngSubmit)="salvar()">
+  <mat-form-field class="full-width">
+    <mat-label>Nome</mat-label>
+    <input matInput formControlName="nome">
+  </mat-form-field>
+
+  <mat-form-field class="full-width">
+    <mat-label>Nota</mat-label>
+    <input matInput formControlName="nota" type="number">
+  </mat-form-field>
+
+  <button mat-raised-button color="primary" type="submit">Salvar</button>
+</form>
+
+-----------------------------------------------------------------------------------
+
+🚦 5. ROTAS
+src/app/app.routes.ts
+ts
+
+import { Routes } from '@angular/router';
+import { AlunoListComponent } from './aluno-list/aluno-list.component';
+import { AlunoFormComponent } from './aluno-form/aluno-form.component';
+
+export const routes: Routes = [
+  { path: '', component: AlunoListComponent },
+  { path: 'novo', component: AlunoFormComponent },
+];
+
+-----------------------------------------------------------------------------------
+
+🧱 6. COMPONENTE RAIZ
+app.component.ts
+ts
+
+import { Component } from '@angular/core';
+import { RouterModule } from '@angular/router';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatButtonModule } from '@angular/material/button';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterModule, MatToolbarModule, MatButtonModule],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {}
+
+
+app.component.html
+html
+
+<mat-toolbar color="primary">
+  <button mat-button routerLink="/">Listar Alunos</button>
+  <button mat-button routerLink="/novo">Novo Aluno</button>
+</mat-toolbar>
+
+<router-outlet></router-outlet>
+
+-----------------------------------------------------------------------------------
+
+▶️ 7. RODAR E ENCERRAR A APLICAÇÃO
+▶ Para rodar:
+bash
+
+ng serve
+
+Acesse no navegador:
+
+http://localhost:4200
+
+❌ Para encerrar:
+No terminal: Ctrl + C
+
+Digite: S e pressione Enter
+
+-----------------------------------------------------------------------------------
+
+🚀 PASSO A PASSO PARA SUBIR O PROJETO
+🔹 1. Inicializar o repositório Git local
+Abra o terminal dentro da pasta do projeto (sistema-alunos) no VS Code:
+bash
+
+git init
+
+🔹 2. Adicionar todos os arquivos
+bash
+
+git add .
+
+🔹 3. Fazer o primeiro commit
+bash
+
+
+git commit -m "Projeto Angular - Simulado Full Stack"
+
+🔹 4. Criar um repositório no GitHub
+
+Vá para https://github.com
+
+Clique em "New repository"
+
+Nomeie como sistema-alunos (ou outro nome que preferir)
+
+⚠️ Não marque "Add README" ou "Add .gitignore"
+
+Clique em Create repository
+
+🔹 5. Conectar o repositório local com o GitHub
+Copie a URL HTTPS do seu novo repositório (ex: https://github.com/seunome/sistema-alunos.git)
+
+No terminal:
+
+bash
+
+git remote add origin https://github.com/seunome/sistema-alunos.git
+
+🔹 6. Subir os arquivos para o GitHub
+bash
+
+git branch -M main
+git push -u origin main
+
+-----------------------------------------------------------------------------------
